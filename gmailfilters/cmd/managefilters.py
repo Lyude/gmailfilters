@@ -76,8 +76,6 @@ class ManageFilters(cliff.command.Command):
                        dest='toxml',
                        action='store_false')
         p.add_argument('--output', '-o')
-        p.add_argument('--no-collapse', '-n',
-                       action='store_true')
         p.add_argument('input',
                        nargs='?')
 
@@ -102,8 +100,11 @@ class ManageFilters(cliff.command.Command):
 
                 filterdict[prop.get('name')] = prop.get('value')
 
-            if filters and not args.no_collapse and same_condition(filterdict, filters[-1]):
-                filters[-1]['label'] += ' %s' % filterdict['label']
+            if filters and same_condition(filterdict, filters[-1]):
+                if not isinstance(filters[-1]['label'], list):
+                    filters[-1]['label'] = [filters[-1]['label']]
+
+                filters[-1]['label'].append(filterdict['label'])
             else:
                 filters.append(filterdict)
 
@@ -141,7 +142,14 @@ class ManageFilters(cliff.command.Command):
                     prop.set('value', to_prop_str(filter[propname]))
 
             if 'label' in filter:
-                for label in filter['label'].split():
+                labels = filter['label']
+
+                if isinstance(labels, str):
+                    labels = [labels]
+                elif not isinstance(labels, list):
+                    raise Exception('Invalid config: label must be string or list')
+
+                for label in labels:
                     e = deepcopy(entry)
                     prop = etree.SubElement(e, '{%s}property' % NS_APP)
                     prop.set('name', 'label')
